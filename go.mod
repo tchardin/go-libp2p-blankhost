@@ -1,4 +1,4 @@
-module github.com/libp2p/go-libp2p-blankhost
+module github.com/tchardin/go-libp2p-blankhost
 
 go 1.14
 
