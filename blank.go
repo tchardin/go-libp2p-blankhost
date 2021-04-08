@@ -64,7 +64,6 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 		mux:      mstream.NewMultistreamMuxer(),
 		eventbus: eventbus.NewBus(),
 	}
-	bh.ids = identify.NewIDService(bh)
 	var err error
 	// subscribe the connection manager to network notifications (has no effect with NullConnMgr)
 	n.Notify(bh.cmgr.Notifee())
@@ -72,6 +71,7 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 	if bh.emitters.evtLocalProtocolsUpdated, err = bh.eventbus.Emitter(&event.EvtLocalProtocolsUpdated{}); err != nil {
 		return nil
 	}
+	bh.ids = identify.NewIDService(bh)
 
 	n.SetStreamHandler(bh.newStreamHandler)
 
