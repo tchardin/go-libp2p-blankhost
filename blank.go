@@ -16,6 +16,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/record"
 
 	"github.com/libp2p/go-eventbus"
+	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
 	logging "github.com/ipfs/go-log"
 
@@ -34,6 +35,7 @@ type BlankHost struct {
 	emitters struct {
 		evtLocalProtocolsUpdated event.Emitter
 	}
+	ids *identify.IDService
 }
 
 type config struct {
@@ -62,11 +64,11 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 		mux:      mstream.NewMultistreamMuxer(),
 		eventbus: eventbus.NewBus(),
 	}
-
+	bh.ids = identify.NewIDService(bh)
+	var err error
 	// subscribe the connection manager to network notifications (has no effect with NullConnMgr)
 	n.Notify(bh.cmgr.Notifee())
 
-	var err error
 	if bh.emitters.evtLocalProtocolsUpdated, err = bh.eventbus.Emitter(&event.EvtLocalProtocolsUpdated{}); err != nil {
 		return nil
 	}
