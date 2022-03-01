@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-eventbus"
 	"github.com/libp2p/go-libp2p/p2p/protocol/identify"
 
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	ma "github.com/multiformats/go-multiaddr"
 	mstream "github.com/multiformats/go-multistream"
@@ -39,7 +39,8 @@ type BlankHost struct {
 }
 
 type config struct {
-	cmgr connmgr.ConnManager
+	cmgr     connmgr.ConnManager
+	eventBus event.Bus
 }
 
 type Option = func(cfg *config)
@@ -47,6 +48,12 @@ type Option = func(cfg *config)
 func WithConnectionManager(cmgr connmgr.ConnManager) Option {
 	return func(cfg *config) {
 		cfg.cmgr = cmgr
+	}
+}
+
+func WithEventBus(eventBus event.Bus) Option {
+	return func(cfg *config) {
+		cfg.eventBus = eventBus
 	}
 }
 
@@ -59,10 +66,12 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 	}
 
 	bh := &BlankHost{
-		n:        n,
-		cmgr:     cfg.cmgr,
-		mux:      mstream.NewMultistreamMuxer(),
-		eventbus: eventbus.NewBus(),
+		n:    n,
+		cmgr: cfg.cmgr,
+		mux:  mstream.NewMultistreamMuxer(),
+	}
+	if bh.eventbus == nil {
+		bh.eventbus = eventbus.NewBus()
 	}
 	var err error
 	// subscribe the connection manager to network notifications (has no effect with NullConnMgr)
@@ -72,6 +81,11 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 		return nil
 	}
 	bh.ids = identify.NewIDService(bh)
+	evtPeerConnectednessChanged, err := bh.eventbus.Emitter(&event.EvtPeerConnectednessChanged{})
+	if err != nil {
+		return nil
+	}
+	n.Notify(newPeerConnectWatcher(evtPeerConnectednessChanged))
 
 	n.SetStreamHandler(bh.newStreamHandler)
 
@@ -90,7 +104,7 @@ func (bh *BlankHost) initSignedRecord() error {
 		log.Error("peerstore does not support signed records")
 		return errors.New("peerstore does not support signed records")
 	}
-	rec := peer.PeerRecordFromAddrInfo(peer.AddrInfo{bh.ID(), bh.Addrs()})
+	rec := peer.PeerRecordFromAddrInfo(peer.AddrInfo{ID: bh.ID(), Addrs: bh.Addrs()})
 	ev, err := record.Seal(rec, bh.Peerstore().PrivKey(bh.ID()))
 	if err != nil {
 		log.Errorf("failed to create signed record for self, err=%s", err)
