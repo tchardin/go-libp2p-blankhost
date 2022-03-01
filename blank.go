@@ -35,7 +35,7 @@ type BlankHost struct {
 	emitters struct {
 		evtLocalProtocolsUpdated event.Emitter
 	}
-	ids *identify.IDService
+	ids identify.IDService
 }
 
 type config struct {
@@ -80,7 +80,10 @@ func NewBlankHost(n network.Network, options ...Option) *BlankHost {
 	if bh.emitters.evtLocalProtocolsUpdated, err = bh.eventbus.Emitter(&event.EvtLocalProtocolsUpdated{}); err != nil {
 		return nil
 	}
-	bh.ids = identify.NewIDService(bh)
+	bh.ids, err = identify.NewIDService(bh)
+	if err != nil {
+		return nil
+	}
 	evtPeerConnectednessChanged, err := bh.eventbus.Emitter(&event.EvtPeerConnectednessChanged{})
 	if err != nil {
 		return nil
